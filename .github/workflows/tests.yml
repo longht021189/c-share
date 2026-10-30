@@ -1,0 +1,139 @@
+name: Tests
+
+# Runs the unit tests (see README.md's "Continuous integration"):
+#   coverage     with Clang's source-based coverage (scripts/coverage.sh): the
+#                table in the job's log and summary, the reports as an artifact
+#   sanitizers   under ASan + LeakSanitizer + UBSan, and TSan: a memory
+#                error, leak, undefined behavior or data race fails the test
+#   valgrind     under Valgrind's memcheck; on demand only (Run workflow)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      valgrind:
+        description: Also run the tests under Valgrind (slow)
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # vcpkg.json has no builtin-baseline: port versions come from this vcpkg
+  # commit, the one the project is developed against.
+  VCPKG_COMMIT: 6ade29bbd5a4c7e99439ec52adbc63c073953a57
+
+jobs:
+  coverage:
+    name: ${{ matrix.preset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, preset: linux-coverage, triplet: x64-linux }
+          - { os: macos-15, preset: macos-coverage, triplet: arm64-osx }
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Clang and LLVM tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm
+
+      - uses: ./.github/actions/setup-vcpkg
+        with:
+          cache-key: ${{ matrix.triplet }}
+
+      - name: Test with coverage
+        run: scripts/coverage.sh ${{ matrix.preset }}
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ matrix.preset }}
+          path: coverage-reports/
+          if-no-files-found: ignore
+
+      - name: Upload vcpkg logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vcpkg-logs-${{ matrix.preset }}
+          path: |
+            ${{ env.VCPKG_ROOT }}/buildtrees/*/*.log
+            build/${{ matrix.preset }}/vcpkg-manifest-install.log
+          if-no-files-found: ignore
+
+  sanitizers:
+    name: ${{ matrix.preset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Leaks are only checked here: LeakSanitizer does not run on macOS.
+          - { os: ubuntu-24.04, preset: linux-asan, triplet: x64-linux }
+          - { os: ubuntu-24.04, preset: linux-tsan, triplet: x64-linux }
+          - { os: macos-15, preset: macos-asan, triplet: arm64-osx }
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Clang
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+
+      - uses: ./.github/actions/setup-vcpkg
+        with:
+          cache-key: ${{ matrix.triplet }}
+
+      - name: Build
+        run: |
+          cmake --preset ${{ matrix.preset }}
+          cmake --build --preset ${{ matrix.preset }} --parallel
+
+      # The preset sets ASAN_OPTIONS / UBSAN_OPTIONS / TSAN_OPTIONS.
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
+
+  valgrind:
+    if: github.event_name == 'workflow_dispatch' && inputs.valgrind
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y valgrind
+
+      - uses: ./.github/actions/setup-vcpkg
+        with:
+          cache-key: x64-linux
+
+      - name: Build
+        run: |
+          cmake --preset linux -DC_SHARE_BUILD_EXAMPLES=OFF
+          cmake --build --preset linux --parallel
+
+      # Each executable runs all its test cases in one process. Valgrind slows
+      # them 20-50x, so the tests' short timeouts may fail where nothing
+      # leaked: read the memcheck errors, not just the result.
+      - name: Test under memcheck
+        run: |
+          status=0
+          for exe in build/linux/bin/*_tests; do
+            echo "::group::$exe"
+            valgrind --error-exitcode=99 --leak-check=full --show-leak-kinds=definite,indirect \
+              --errors-for-leak-kinds=definite,indirect --track-origins=yes "$exe" || status=1
+            echo "::endgroup::"
+          done
+          exit $status

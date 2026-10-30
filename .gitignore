@@ -60,10 +60,31 @@ compile_commands.json
 
 # vcpkg
 vcpkg_installed/
+CMakeUserPresets.json
 
 # debug information files
 *.dwo
 
+# Reports of scripts/lint.sh
+lint-reports/
+
+# Reports of scripts/coverage.sh
+coverage-reports/
+
 # test output & cache
 Testing/
 .cache/
+
+# IDEs
+.vscode/
+.vs/
+# CLion's project files stay local, except the shared inspection profile
+# (scripts/lint.sh runs it through inspect.sh).
+.idea/*
+!.idea/inspectionProfiles/
+.idea/inspectionProfiles/*
+!.idea/inspectionProfiles/Project_Default.xml
+!.idea/inspectionProfiles/profiles_settings.xml
+!.idea/dictionaries/
+.idea/dictionaries/*
+!.idea/dictionaries/project.xml

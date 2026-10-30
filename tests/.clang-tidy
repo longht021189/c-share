@@ -1,0 +1,8 @@
+# The root .clang-tidy, minus what Catch2's macros trip:
+# - unchecked-optional-access: REQUIRE(opt) ends the test when opt is empty,
+#   which the check cannot see, so every later *opt is "unchecked";
+# - EnumCastOutOfRange: reported inside Catch2's own assertion macros.
+InheritParentConfig: true
+Checks: >
+  -bugprone-unchecked-optional-access,
+  -clang-analyzer-optin.core.EnumCastOutOfRange

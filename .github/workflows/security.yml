@@ -1,0 +1,86 @@
+name: Security
+
+# Reports to the repository's Security tab (Code scanning), see README.md's
+# "Continuous integration":
+#   codeql         the security queries of CodeQL over c-share's own C/C++
+#   dependencies   known vulnerabilities (OSV) in the vcpkg packages the
+#                  build installs (scripts/check_dependencies.py)
+# The daily run catches advisories published since the last push.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+
+env:
+  VCPKG_COMMIT: 6ade29bbd5a4c7e99439ec52adbc63c073953a57
+
+jobs:
+  codeql:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-vcpkg
+        with:
+          cache-key: x64-linux
+
+      # Configuring installs the vcpkg packages; doing it before CodeQL starts
+      # watching keeps curl, wolfSSL, ... out of the analysis.
+      - name: Configure
+        run: cmake --preset linux -DC_SHARE_BUILD_TESTS=OFF
+
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: c-cpp
+          build-mode: manual
+          queries: security-extended
+
+      - name: Build
+        run: cmake --build --preset linux --parallel
+
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: codeql
+
+  dependencies:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-vcpkg
+        with:
+          cache-key: x64-linux
+
+      - name: Install the vcpkg packages
+        run: cmake --preset linux
+
+      - name: Check them against OSV
+        run: |
+          python3 scripts/check_dependencies.py build/linux \
+            --sarif dependencies.sarif --markdown dependencies.md
+        # Exits 1 when a dependency has a known vulnerability: the job fails
+        # and the alerts are still uploaded below.
+
+      - name: Summary
+        if: always()
+        run: if [[ -f dependencies.md ]]; then cat dependencies.md >>"$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Upload to code scanning
+        if: always() && hashFiles('dependencies.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: dependencies.sarif
+          category: dependencies

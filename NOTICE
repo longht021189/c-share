@@ -1,0 +1,47 @@
+c-share
+Copyright the c-share contributors
+
+This product is licensed under the GNU Affero General Public License,
+Version 3 (AGPLv3). See the LICENSE file for the full text.
+
+Third-Party Dependency Notices
+-------------------------------
+
+c-share links against third-party libraries that are not covered by the
+AGPLv3 and carry their own license terms.
+
+### wolfSSL (GPLv3, or commercial)
+
+Used as curl's TLS backend (see README.md, "Why curl's TLS backend is
+pinned to wolfSSL", for the technical details). wolfSSL is dual licensed:
+its freely available edition is GPLv3, or there is a paid commercial
+license with no copyleft obligation.
+
+GPLv3 section 13 explicitly permits combining GPLv3 code with AGPLv3 code,
+so linking the open-source wolfSSL edition here is compatible with
+c-share's own AGPLv3 license. The resulting combined work is bound by
+AGPLv3's terms as a whole -- including making source available to users
+who interact with it only over a network, not just to those who receive a
+distributed binary. This obligation follows from c-share's own AGPLv3
+license, independently of wolfSSL: switching to a commercial wolfSSL
+license removes the GPLv3 layer, but does not by itself remove c-share's
+own AGPLv3 obligations for the combined work.
+
+### curl (curl license)
+
+curl itself is distributed under the curl license, a permissive
+MIT/X11-style license: it allows use, modification, and redistribution in
+source or binary form, provided curl's copyright notice and permission
+notice are retained. It imposes no copyleft obligation.
+
+### General
+
+Determining which third-party licenses apply to a given build of c-share,
+and complying with their terms, is solely the responsibility of whoever
+builds, links, or distributes it -- not the Licensor. This is also already
+the effect of the AGPLv3's disclaimer of warranty and limitation of
+liability (Sections 15 and 16): c-share is provided "AS IS", and the
+Licensor bears no liability for how it is built, licensed, or distributed
+downstream. Nothing in this notice removes any obligation imposed by a
+third-party dependency's own license, and adding a dependency not listed
+here does not exempt it from that dependency's terms.

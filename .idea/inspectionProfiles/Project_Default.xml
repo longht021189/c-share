@@ -1,0 +1,9 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="CppUseDesignatedInitializers" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <!-- CLion's GitHub Actions metadata lags the actions' current majors and
+         flags inputs they do have (actionlint checks the workflows instead). -->
+    <inspection_tool class="UndefinedParamsPresent" enabled="false" level="WARNING" enabled_by_default="false" />
+  </profile>
+</component>

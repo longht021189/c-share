@@ -1,0 +1,16 @@
+# The style the code was written in: 4-space indents, 120 columns, `T* p`.
+# CLion picks this file up too. Run `scripts/lint.sh --fix` to apply it.
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 120
+PointerAlignment: Left
+AccessModifierOffset: -4
+IndentCaseLabels: true
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: Inline
+AllowShortEnumsOnASingleLine: false
+FixNamespaceComments: true
+IncludeBlocks: Preserve
+SpacesBeforeTrailingComments: 1

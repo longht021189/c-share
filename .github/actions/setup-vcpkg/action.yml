@@ -1,0 +1,34 @@
+name: Set up vcpkg
+description: >
+  Clones vcpkg at the commit c-share builds against, bootstraps it, and
+  restores its binary cache (the packages it already built). Sets VCPKG_ROOT
+  and VCPKG_DEFAULT_BINARY_CACHE for the steps after.
+
+inputs:
+  cache-key:
+    description: What the cached packages were built for, e.g. the preset's triplet
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Clone and bootstrap vcpkg
+      shell: bash
+      run: |
+        export VCPKG_ROOT="$RUNNER_TEMP/vcpkg" VCPKG_DEFAULT_BINARY_CACHE="$RUNNER_TEMP/vcpkg-cache"
+        echo "VCPKG_ROOT=$VCPKG_ROOT" >>"$GITHUB_ENV"
+        echo "VCPKG_DEFAULT_BINARY_CACHE=$VCPKG_DEFAULT_BINARY_CACHE" >>"$GITHUB_ENV"
+        git clone --quiet https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+        git -C "$VCPKG_ROOT" checkout --quiet "$VCPKG_COMMIT"
+        "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+        mkdir -p "$VCPKG_DEFAULT_BINARY_CACHE"
+
+    # A hit skips building curl, wolfSSL, ... from source.
+    - name: Cache vcpkg packages
+      uses: actions/cache@v6
+      with:
+        path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+        key: vcpkg-${{ inputs.cache-key }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('vcpkg.json', 'vcpkg-overlays/**') }}
+        restore-keys: |
+          vcpkg-${{ inputs.cache-key }}-${{ env.VCPKG_COMMIT }}-
+          vcpkg-${{ inputs.cache-key }}-
