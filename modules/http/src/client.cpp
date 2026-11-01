@@ -78,9 +78,9 @@ bool is_final_hop(const Response& response, const bool follow_redirects) {
     return true;
 }
 
-// The codings libcurl can decode in this build, as reqwest's default
-// gzip/deflate/brotli features advertise them -- "gzip,deflate,br", minus
-// anything this libcurl lacks (advertising a coding we cannot decode would
+// The codings libcurl can decode in this build, as reqwest's
+// gzip/deflate/brotli/zstd features advertise them -- "gzip,deflate,br,zstd",
+// minus anything this libcurl lacks (advertising a coding we cannot decode would
 // hand the caller raw compressed bytes).
 std::string accept_encoding_value() {
     const auto features = curl_version_info(CURLVERSION_NOW)->features;
@@ -94,6 +94,7 @@ std::string accept_encoding_value() {
         add("deflate");
     }
     if (features & CURL_VERSION_BROTLI) add("br");
+    if (features & CURL_VERSION_ZSTD) add("zstd");
     return value;
 }
 
@@ -104,6 +105,7 @@ bool is_decoded_by_libcurl(const std::string_view coding) {
     const auto features = curl_version_info(CURLVERSION_NOW)->features;
     if (coding == "gzip" || coding == "deflate") return features & CURL_VERSION_LIBZ;
     if (coding == "br") return features & CURL_VERSION_BROTLI;
+    if (coding == "zstd") return features & CURL_VERSION_ZSTD;
     return false;
 }
 

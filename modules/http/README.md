@@ -79,19 +79,19 @@ boundary; a capture-less lambda converts to one implicitly, as above.
   even to another host; `r-share` turns it off and follows redirects itself
   so each hop gets its own cookies and headers.
 - Default headers match reqwest's: `Accept: */*` and an `Accept-Encoding`
-  listing what this libcurl can decode, in reqwest's order (`gzip,deflate,br`).
+  listing what this libcurl can decode, in reqwest's order (`gzip,deflate,br,zstd`).
   libcurl's own `User-Agent`, `Expect` and `Accept` are switched off unless
   the caller sets them. Each default is skipped when the caller sets a header
   of that name.
 - Response compression is negotiated and decoded transparently
   (`CURLOPT_ACCEPT_ENCODING` set to `""`, letting libcurl offer and
   auto-decode whatever it was built with); `Response::body` always arrives
-  already decompressed. When libcurl decoded it (`gzip`, `deflate` or `br`,
+  already decompressed. When libcurl decoded it (`gzip`, `deflate`, `br` or `zstd`,
   exact lowercase), the `Content-Encoding` and `Content-Length` that described
   the compressed bytes are dropped from the headers, as reqwest does.
   Advertised codings are limited to what the build supports: the vcpkg
-  `curl` feature set in vcpkg-share's `vcpkg.json` does not include `brotli` yet, so
-  `Accept-Encoding` is `gzip,deflate` there until `curl[brotli]` is added.
+  `curl` feature set in vcpkg-share's `vcpkg.json` has `zstd` but not `brotli` yet, so
+  `Accept-Encoding` is `gzip,deflate,zstd` there until `curl[brotli]` is added.
 - `Request::pinned_public_key` is optional certificate/public-key pinning
   (`CURLOPT_PINNEDPUBLICKEY`) -- unset by default (normal CA validation),
   set it to a file path or `"sha256//<base64-hash>[;sha256//<hash2>]"` to
