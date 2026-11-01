@@ -24,9 +24,6 @@ permissions:
   actions: read
   security-events: write
 
-env:
-  VCPKG_COMMIT: 6ade29bbd5a4c7e99439ec52adbc63c073953a57
-
 jobs:
   codeql:
     runs-on: ubuntu-24.04

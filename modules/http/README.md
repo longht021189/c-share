@@ -90,7 +90,7 @@ boundary; a capture-less lambda converts to one implicitly, as above.
   exact lowercase), the `Content-Encoding` and `Content-Length` that described
   the compressed bytes are dropped from the headers, as reqwest does.
   Advertised codings are limited to what the build supports: the vcpkg
-  `curl` feature set in `vcpkg.json` does not include `brotli` yet, so
+  `curl` feature set in vcpkg-share's `vcpkg.json` does not include `brotli` yet, so
   `Accept-Encoding` is `gzip,deflate` there until `curl[brotli]` is added.
 - `Request::pinned_public_key` is optional certificate/public-key pinning
   (`CURLOPT_PINNEDPUBLICKEY`) -- unset by default (normal CA validation),
@@ -146,7 +146,7 @@ client.close_websocket(ws, 1000, "bye");                        // on_close foll
 
 Like the HTTP callbacks, these run on the event-loop thread, outside the
 client's lock. Needs libcurl built with WebSockets: the `websockets` feature
-of the `curl` port, which `vcpkg.json` asks for (the overlay port keeps every
+of the `curl` port, which vcpkg-share's `vcpkg.json` asks for (the overlay port keeps every
 non-HTTP protocol out of it).
 
 ### Compression
@@ -261,10 +261,10 @@ about before reaching for it:
   loopback server (see the root README's Testing); TLS, pinning and HTTP/3
   were verified against real endpoints by hand, not by committed tests.
 - **Not yet built through vcpkg's `curl`/`wolfssl` ports (or the
-  `vcpkg-overlays/ports/wolfssl` overlay).** All verification so far
+  vcpkg-share's `ports/wolfssl` overlay).** All verification so far
   (including TLS/gzip/pinning) linked the *system* libcurl + Secure
   Transport on macOS via CMake's `FindCURL` fallback, since vcpkg isn't
-  installed on the machine this was developed on. `vcpkg.json`'s pinned
+  installed on the machine this was developed on. vcpkg-share's `vcpkg.json`'s pinned
   `curl[wolfssl]` + `wolfssl[curve25519,ed25519]` configuration (see the
   root README's "Why `curl`'s TLS backend is pinned to wolfSSL") has not
   itself been built or exercised yet. Open questions: whether the overlay

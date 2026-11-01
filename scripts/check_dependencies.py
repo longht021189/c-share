@@ -94,13 +94,19 @@ def fixed_versions(vuln: dict) -> list:
 
 
 def manifest_location(root: str, port: str) -> tuple:
-    """(path, line) to point an alert at: the overlay port's version, else the manifest."""
-    overlay = f"vcpkg-overlays/ports/{port}/vcpkg.json"
-    if os.path.exists(os.path.join(root, overlay)):
-        path, needle = overlay, '"version'
+    """(path, line) to point an alert at: the overlay port's version, else the manifest.
+
+    Both are in vcpkg-share (VCPKG_SHARE_PATH, else next to this checkout); the
+    path is relative to root, as on CI, where vcpkg-share is checked out inside it.
+    """
+    share = os.environ.get("VCPKG_SHARE_PATH") or os.path.join(root, "..", "vcpkg-share")
+    overlay = os.path.join(share, "ports", port, "vcpkg.json")
+    if os.path.exists(overlay):
+        full, needle = overlay, '"version'
     else:
-        path, needle = "vcpkg.json", f'"{port}"'
-    with open(os.path.join(root, path), encoding="utf-8") as f:
+        full, needle = os.path.join(share, "vcpkg.json"), f'"{port}"'
+    path = os.path.relpath(full, root)
+    with open(full, encoding="utf-8") as f:
         for number, line in enumerate(f, 1):
             if needle in line:
                 return path, number

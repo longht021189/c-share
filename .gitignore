@@ -88,3 +88,6 @@ Testing/
 !.idea/dictionaries/
 .idea/dictionaries/*
 !.idea/dictionaries/project.xml
+
+# vcpkg-share, checked out inside the workspace on CI (VCPKG_SHARE_PATH)
+/vcpkg-share/

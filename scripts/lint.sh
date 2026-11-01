@@ -59,7 +59,7 @@ failed=0
 # --- clang-format: every C/C++ file in git.
 sources=()
 while IFS= read -r file; do sources+=("$file"); done < <(
-    git ls-files '*.c' '*.cpp' '*.h' '*.hpp' | grep -v '^vcpkg-overlays/'
+    git ls-files '*.c' '*.cpp' '*.h' '*.hpp'
 )
 if ((fix)); then
     "$clang_format" -i "${sources[@]}"
@@ -138,9 +138,8 @@ EOF
     fi
     # One <inspection>.json per inspection that found something. Only what
     # is found in this repo's own files counts: CLion also inspects what the
-    # CMake project loads from build/ and vcpkg, and vcpkg-overlays/ holds
-    # copies of vcpkg's ports (clang-format skips it too).
-    if ! git ls-files | grep -v '^vcpkg-overlays/' | python3 -c '
+    # CMake project loads from build/, vcpkg and vcpkg-share.
+    if ! git ls-files | python3 -c '
 import collections, glob, json, os, sys
 
 out, root = sys.argv[1], sys.argv[2]
@@ -163,7 +162,7 @@ if counts:
     lines += [f"| {name} | {count} |" for name, count in counts.most_common()]
 else:
     lines.append("No problems in this repo'"'"'s files.")
-lines += ["", f"{skipped} more outside them (build/, vcpkg, vcpkg-overlays/) are not listed."]
+lines += ["", f"{skipped} more outside them (build/, vcpkg, vcpkg-share) are not listed."]
 for path in sorted(by_file):
     lines += ["", f"## {path}", ""]
     for line, inspection, description in sorted(by_file[path]):

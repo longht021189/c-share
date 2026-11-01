@@ -1,8 +1,10 @@
 name: Set up vcpkg
 description: >
-  Clones vcpkg at the commit c-share builds against, bootstraps it, and
-  restores its binary cache (the packages it already built). Sets VCPKG_ROOT
-  and VCPKG_DEFAULT_BINARY_CACHE for the steps after.
+  Checks out vcpkg-share (the dependencies' manifest, overlay ports and
+  triplets) into vcpkg-share/, clones vcpkg at the commit it pins
+  (VCPKG_COMMIT), bootstraps it, and restores its binary cache (the packages
+  it already built). Sets VCPKG_SHARE_PATH, VCPKG_ROOT and
+  VCPKG_DEFAULT_BINARY_CACHE for the steps after.
 
 inputs:
   cache-key:
@@ -12,10 +14,19 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Check out vcpkg-share
+      uses: actions/checkout@v7
+      with:
+        repository: longht021189/vcpkg-share
+        path: vcpkg-share
+
     - name: Clone and bootstrap vcpkg
       shell: bash
       run: |
         export VCPKG_ROOT="$RUNNER_TEMP/vcpkg" VCPKG_DEFAULT_BINARY_CACHE="$RUNNER_TEMP/vcpkg-cache"
+        VCPKG_COMMIT="$(cat vcpkg-share/VCPKG_COMMIT)"
+        echo "VCPKG_SHARE_PATH=$GITHUB_WORKSPACE/vcpkg-share" >>"$GITHUB_ENV"
+        echo "VCPKG_COMMIT=$VCPKG_COMMIT" >>"$GITHUB_ENV"
         echo "VCPKG_ROOT=$VCPKG_ROOT" >>"$GITHUB_ENV"
         echo "VCPKG_DEFAULT_BINARY_CACHE=$VCPKG_DEFAULT_BINARY_CACHE" >>"$GITHUB_ENV"
         git clone --quiet https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
@@ -28,7 +39,7 @@ runs:
       uses: actions/cache@v6
       with:
         path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
-        key: vcpkg-${{ inputs.cache-key }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('vcpkg.json', 'vcpkg-overlays/**') }}
+        key: vcpkg-${{ inputs.cache-key }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('vcpkg-share/vcpkg.json', 'vcpkg-share/ports/**', 'vcpkg-share/triplets/**') }}
         restore-keys: |
           vcpkg-${{ inputs.cache-key }}-${{ env.VCPKG_COMMIT }}-
           vcpkg-${{ inputs.cache-key }}-

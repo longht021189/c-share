@@ -8,6 +8,25 @@ if(C_SHARE_BUILD_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES tests)
 endif()
 
+# The dependencies' manifest, overlay ports and triplets live in vcpkg-share
+# (https://github.com/longht021189/vcpkg-share): next to this checkout, or at
+# VCPKG_SHARE_PATH. Only read when building through vcpkg's toolchain; a build
+# against vcpkg-share's prebuilt prefix (CMAKE_PREFIX_PATH, as r-share's
+# build.rs does with VCPKG_SHARE_PREFIX) needs neither vcpkg nor vcpkg-share.
+if(CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg\\.cmake$")
+    if(DEFINED ENV{VCPKG_SHARE_PATH})
+        set(VCPKG_SHARE_PATH "$ENV{VCPKG_SHARE_PATH}")
+    else()
+        set(VCPKG_SHARE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../vcpkg-share")
+    endif()
+    if(NOT EXISTS "${VCPKG_SHARE_PATH}/vcpkg.json")
+        message(FATAL_ERROR "no vcpkg-share at ${VCPKG_SHARE_PATH}: clone it next to c-share, or set VCPKG_SHARE_PATH")
+    endif()
+    set(VCPKG_MANIFEST_DIR "${VCPKG_SHARE_PATH}" CACHE PATH "vcpkg-share's checkout, holding the manifest")
+    set(VCPKG_OVERLAY_PORTS "${VCPKG_SHARE_PATH}/ports" CACHE STRING "vcpkg-share's overlay ports")
+    set(VCPKG_OVERLAY_TRIPLETS "${VCPKG_SHARE_PATH}/triplets" CACHE STRING "vcpkg-share's overlay triplets")
+endif()
+
 project(c-share
     VERSION 0.1.0
     LANGUAGES C CXX

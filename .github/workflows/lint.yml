@@ -15,7 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  VCPKG_COMMIT: 6ade29bbd5a4c7e99439ec52adbc63c073953a57
   # clang-format must match the version the code was formatted with, or the
   # two disagree on layout. PyPI's newest clang-tidy is 22, one major behind
   # CLion's bundled 23.

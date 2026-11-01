@@ -22,11 +22,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # vcpkg.json has no builtin-baseline: port versions come from this vcpkg
-  # commit, the one the project is developed against.
-  VCPKG_COMMIT: 6ade29bbd5a4c7e99439ec52adbc63c073953a57
-
 jobs:
   coverage:
     name: ${{ matrix.preset }}

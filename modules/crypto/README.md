@@ -113,7 +113,7 @@ key/nonce/plaintext during development.
 Every secp256k1 function here (`c_share_crypto_secp256k1_public_from_private`,
 `c_share_crypto_evm_address_from_private_key`, `c_share_crypto_secp256k1_sign`,
 `c_share_crypto_secp256k1_verify`) needs the first thing below, which the
-c-share `wolfssl` overlay port (`vcpkg-overlays/ports/wolfssl/portfile.cmake`)
+vcpkg-share `wolfssl` overlay port (`ports/wolfssl/portfile.cmake` there)
 doesn't enable by default; `c_share_crypto_evm_address_from_private_key`
 additionally needs the second, Keccak-256-specific one:
 

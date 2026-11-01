@@ -1,7 +1,8 @@
 # c-share
 
-Cross-platform C/C++ static library project, built with CMake and managed
-with a vcpkg manifest.
+Cross-platform C/C++ static library project, built with CMake, its
+dependencies declared in [vcpkg-share](https://github.com/longht021189/vcpkg-share)'s
+vcpkg manifest.
 
 ## Design decisions
 
@@ -12,9 +13,13 @@ with a vcpkg manifest.
   every module builds a `STATIC` library. Objects are still built
   position-independent (`CMAKE_POSITION_INDEPENDENT_CODE ON`) so the static
   libs can be linked into a shared object later (e.g. an Android `.so`).
-- **Manifest-mode vcpkg.** Dependencies live in `vcpkg.json`, resolved
-  per-build into `build/<preset>/vcpkg_installed/` — nothing is installed
-  globally.
+- **Manifest-mode vcpkg, manifest in vcpkg-share.** Dependencies live in
+  vcpkg-share's `vcpkg.json` (checked out next to c-share, or at
+  `VCPKG_SHARE_PATH`), resolved per-build into
+  `build/<preset>/vcpkg_installed/` — nothing is installed globally. A
+  consumer can instead build against vcpkg-share's prebuilt prefix
+  (`-DCMAKE_PREFIX_PATH=<prefix>`, no vcpkg toolchain), as r-share's `build.rs`
+  does with `VCPKG_SHARE_PREFIX`.
 - **One module = one CMakeLists.txt.** Each module under `modules/` is a
   self-contained static library target with its own `CMakeLists.txt`,
   `include/`, and `src/`. The root `CMakeLists.txt` only wires modules
@@ -25,7 +30,6 @@ with a vcpkg manifest.
 ```
 CMakeLists.txt          # root: global settings, adds modules/examples/tests
 CMakePresets.json        # vcpkg toolchain + per-platform presets
-vcpkg.json               # dependency manifest
 cmake/
   CompilerOptions.cmake  # shared per-target compile settings helper
 modules/
@@ -72,13 +76,16 @@ referencing the raw target name.
 - CMake ≥ 3.23
 - A C++17 compiler (MSVC, Clang, GCC, or Android NDK's Clang)
 - [vcpkg](https://github.com/microsoft/vcpkg), with `VCPKG_ROOT` set in your
-  environment
+  environment, at the commit vcpkg-share's `VCPKG_COMMIT` names
+- [vcpkg-share](https://github.com/longht021189/vcpkg-share) next to this
+  checkout (`../vcpkg-share`), or at `VCPKG_SHARE_PATH`
 - Android NDK (only for Android presets), with `ANDROID_NDK_HOME` set
 
 ## Building
 
 Presets in `CMakePresets.json` set the vcpkg toolchain file and pick a
-static-library triplet per platform.
+static-library triplet per platform; `CMakeLists.txt` points vcpkg at
+vcpkg-share's manifest, overlay ports and triplets.
 
 ```sh
 # Desktop (picks linux / macos / windows automatically via the preset condition)
@@ -95,7 +102,7 @@ Useful options (pass with `-D` at configure time):
 
 - `-DC_SHARE_BUILD_EXAMPLES=OFF` — skip building `examples/` (on by default)
 - `-DC_SHARE_BUILD_TESTS=ON` — build `tests/`. Off by default; the `linux`,
-  `macos` and `windows` presets turn it on. It also adds vcpkg.json's `tests` feature,
+  `macos` and `windows` presets turn it on. It also adds vcpkg-share's `tests` feature,
   which brings in Catch2, so a consumer that builds c-share without tests
   (e.g. r-share's `build.rs`) never installs or links it
 - `-DC_SHARE_BUILD_HTTP=OFF` — skip `modules/http` (on by default), so a consumer
@@ -131,7 +138,7 @@ runs CLion's own inspections, with the profile in
 `lint-reports/clion` (git-ignored): a JSON per inspection that found something,
 and `summary.md` with every problem by file. Only problems in this repo's own
 files count; CLion also inspects what the CMake project loads from `build/`
-and vcpkg, and `vcpkg-overlays/` holds copies of vcpkg's ports. CLion may stay
+vcpkg and vcpkg-share. CLion may stay
 open: `inspect.sh` runs with config and system directories of its own (under
 the build dir), seeded with CLion's license and settings.
 
@@ -255,86 +262,10 @@ with a reason, and they stay dismissed.
 3. Add `add_subdirectory(<name>)` to `modules/CMakeLists.txt`.
 4. Add a `<name>_tests` executable to `tests/CMakeLists.txt`.
 
-## Adding a vcpkg dependency
+## Dependencies
 
-1. Add the port name to `dependencies` in `vcpkg.json`.
-2. If this is the manifest's first dependency, vcpkg will ask for a
-   `builtin-baseline`; run `vcpkg x-update-baseline --add-initial-baseline`
-   to pin one.
-3. `find_package(...)` it in the module's `CMakeLists.txt` and
-   `target_link_libraries` it — vcpkg's static triplets (see
-   `CMakePresets.json`) provide `.a`/`.lib` static libraries by default on
-   every platform.
+The vcpkg dependencies (curl, wolfSSL, zlib, nlohmann-json; Catch2 for the
+tests) are declared in [vcpkg-share](https://github.com/longht021189/vcpkg-share),
+with its overlay ports and triplets, and the vcpkg commit they build against.
+See its README for adding one, and for why curl is pinned to wolfSSL.
 
-### Why `curl`'s TLS backend is pinned to wolfSSL
-
-`vcpkg.json`'s `curl` entry disables `curl`'s own default features and
-explicitly selects `["wolfssl"]` instead of just depending on `"curl"`
-plain, and `wolfssl` is listed as its own top-level dependency with
-`["curve25519", "ed25519"]`. This is deliberate, not the port's default:
-
-- `curl`'s default feature set is `["non-http", "ssl"]`, and `"ssl"` is a
-  *platform-conditional* meta-feature: on Windows it resolves to `sspi`
-  (Schannel), everywhere else to `openssl`. Left alone, that means every
-  platform links a *different* TLS backend. This project also targets
-  Android (via the `android-*` presets), which has no OS-native TLS
-  backend curl can link against the way it can with Schannel or Secure
-  Transport. So no backend is usable everywhere without pinning one
-  explicitly.
-- **wolfSSL** was chosen over OpenSSL for a smaller footprint on Android
-  and over Secure Transport/Schannel-only options because it works
-  identically on every target here, including Android. It's dual
-  licensed: the open-source edition is **GPLv3**, or there's a paid
-  commercial license ($7,500 USD/product at the time of writing) that
-  carries no copyleft obligation. `c-share` itself is licensed under
-  **AGPLv3** (see `LICENSE`/`NOTICE`), and GPLv3 section 13 explicitly
-  permits combining GPLv3 code with AGPLv3 code, so linking the
-  open-source wolfSSL edition into `c_share::http` is compatible --
-  **but** the combination as a whole is then bound by AGPLv3's own
-  terms regardless of wolfSSL, which are broader than plain GPLv3:
-  they also cover making source available to users who only interact
-  with the program over a network (no distribution required to
-  trigger it). This obligation comes from `c-share`'s own license, not
-  just from wolfSSL, so switching wolfSSL to its commercial license
-  does not remove it. Avoiding it requires complying with AGPLv3 for the
-  whole combined work, or a separate license arrangement with
-  `c-share`'s copyright holders. Swapping the TLS
-  backend to `mbedtls` only removes the additional GPLv3 layer from
-  wolfSSL; it does not change `c-share`'s own AGPLv3 obligations.
-- `"non-http"` (curl's other default feature, enabling protocols beyond
-  HTTP/HTTPS -- FTP, SMTP, etc.) is *not* re-added: `c_share::http` only
-  ever does HTTP/HTTPS, so there's no reason to build that extra protocol
-  surface into a dependency of this project.
-
-#### `vcpkg-overlays/ports/wolfssl`
-
-Upstream vcpkg's `wolfssl` port exposes a `curve25519` feature (maps to
-wolfSSL's `WOLFSSL_CURVE25519` CMake option, X25519/ECDH) but has no
-equivalent toggle for `WOLFSSL_ED25519` (EdDSA signatures) at all, even
-though wolfSSL's own `CMakeLists.txt` supports it -- both default to
-"disabled" upstream in wolfSSL itself, and vcpkg's portfile only ever
-overrides the former. `vcpkg-overlays/ports/wolfssl/` is a local copy of
-that port with one addition: an `ed25519` feature wired the same way
-`curve25519` already is. `CMakePresets.json`'s `base` preset sets
-`VCPKG_OVERLAY_PORTS` to this directory so every platform preset picks it
-up automatically -- no per-preset wiring needed.
-
-ChaCha20 and Poly1305 needed no such patch: wolfSSL's `CMakeLists.txt`
-defaults both to enabled already, untouched by vcpkg's portfile. HKDF
-also needed no patch, but for a more incidental reason: vcpkg's portfile
-unconditionally passes `-DWOLFSSL_HPKE=yes`, and wolfSSL's own
-`CMakeLists.txt` force-enables `WOLFSSL_HKDF` as a side effect of HPKE
-being on.
-
-Verified against the actual port manifests and `CMakeLists.txt`
-(`https://raw.githubusercontent.com/microsoft/vcpkg/master/ports/curl/vcpkg.json`,
-`.../ports/wolfssl/{vcpkg.json,portfile.cmake}`, and
-`https://raw.githubusercontent.com/wolfSSL/wolfssl/v5.9.2-stable/CMakeLists.txt`)
-for the feature names and defaults described above; **not yet built
-end-to-end through vcpkg on this machine** (only against system libcurl
-+ Secure Transport on macOS, which ignores this manifest, `wolfssl`, and
-the overlay port entirely -- see the "Known limitations" section of
-`modules/http/README.md`). Build this through the real `vcpkg`/overlay
-port path and confirm `WOLFSSL_ED25519`/`curve25519`/HKDF/ChaCha20-
-Poly1305 actually land in the built static lib before relying on any of
-this.
